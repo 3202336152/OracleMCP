@@ -1,0 +1,38 @@
+{
+  "name": "oracle-mcp-server",
+  "version": "1.0.0",
+  "description": "Oracle 数据库 MCP Server - 为 AI 助手提供 Oracle 数据库访问能力",
+  "type": "module",
+  "bin": {
+    "oracle-mcp-server": "./bin/oracle-mcp-server.js"
+  },
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "oracledb": "^6.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0",
+    "fast-check": "^3.0.0",
+    "@vitest/coverage-v8": "^1.0.0"
+  },
+  "keywords": [
+    "oracle",
+    "database",
+    "mcp",
+    "model-context-protocol",
+    "ai-assistant"
+  ],
+  "license": "MIT"
+}

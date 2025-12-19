@@ -13,7 +13,7 @@ Oracle 数据库 MCP Server - 为 AI 助手提供 Oracle 数据库访问能力�
 - 🔗 获取表关系图（父表/子表关联），快速构建 JOIN 查询
 - 📝 获取完整 DDL 语句（含约束、索引、分区、注释）
 - 📖 查看存储过程/函数的参数签名和源代码
-- 🔒 只读查询，安全可控
+- 🔒 安全可控（支持只读查询和受限写入）
 - 🛡️ 支持表白名单和硬性行数限制（最大 1000 行）
 - 📦 自动处理 LOB 大对象截断（CLOB 4000 字符，BLOB 1024 字节）
 - 💪 连接池健康检查，自动恢复失效连接
@@ -21,6 +21,7 @@ Oracle 数据库 MCP Server - 为 AI 助手提供 Oracle 数据库访问能力�
 - 📈 **列统计分析**: 获取列的基数、分布、Top N 值，理解数据特征
 - ⚡ **执行计划分析**: 自动识别全表扫描、索引缺失等性能问题
 - ⏰ **Flashback 查询**: 查询历史时间点数据，排查数据变更问题
+- ✏️ **数据写入**: 支持 INSERT/UPDATE 操作，自动事务管理，内置安全机制
 
 ## 安装
 
@@ -145,18 +146,22 @@ npm install -g oracle-mcp-server
 | 最大返回行数 | 1000 | 硬性限制，防止意外请求过多数据 |
 | CLOB 截断长度 | 4000 字符 | 超出部分显示 `... [已截断]` |
 | BLOB 截断长度 | 1024 字节 | 超出部分显示 `... [已截断]` |
+| DML 操作限制 | INSERT/UPDATE | 禁止 DELETE/TRUNCATE/DROP |
+| UPDATE 安全 | 必须带 WHERE | 防止全表更新 |
 
 ### 安全建议
 
 ⚠️ **重要**: 代码层的 SQL 验证（正则过滤）可能被绕过。强烈建议：
 
-1. **数据库层面限制权限**: MCP 连接的数据库用户应只拥有 SELECT 权限
+1. **数据库层面限制权限**: 根据需求授予适当权限
    ```sql
-   -- 授权所有表的查询权限
+   -- 只读场景：仅授权查询权限
    GRANT SELECT ANY TABLE TO mcp_user;
    
-   -- 或者只授权特定表
-   GRANT SELECT ON schema.table_name TO mcp_user;
+   -- 读写场景：授权查询和写入权限
+   GRANT SELECT, INSERT, UPDATE ON schema.table_name TO mcp_user;
+   
+   -- 注意：不建议授予 DELETE 权限，MCP 代码层也禁止 DELETE 操作
    ```
 
 2. **使用表白名单**: 通过 `ORACLE_TABLE_WHITELIST` 限制可访问的表
@@ -448,6 +453,58 @@ CREATE TABLE "SCOTT"."EMPLOYEES" (
 
 ---
 
+### 数据写入
+
+#### oracle_execute_dml
+执行 DML 语句（INSERT/UPDATE），自动事务管理。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| sql | string | 是 | DML 语句（仅 INSERT 或 UPDATE） |
+
+**安全机制：**
+- 只允许 INSERT 和 UPDATE 语句
+- 禁止 DELETE、TRUNCATE、DROP 等危险操作
+- UPDATE 必须包含 WHERE 子句，防止全表更新
+
+**返回示例：**
+```json
+{
+  "success": true,
+  "verb": "UPDATE",
+  "rowsAffected": 1,
+  "executionTime": 45,
+  "sql": "UPDATE EMPLOYEES SET SALARY = 25000 WHERE EMPLOYEE_ID = 100"
+}
+```
+
+#### oracle_insert_record
+将 JSON 对象插入表中，无需手写 SQL。使用绑定变量，天然防止 SQL 注入。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| table | string | 是 | 表名 |
+| data | object | 是 | JSON 数据对象 |
+
+**返回示例：**
+```json
+{
+  "success": true,
+  "table": "EMPLOYEES",
+  "rowsAffected": 1,
+  "columns": ["EMPLOYEE_ID", "FIRST_NAME", "LAST_NAME", "SALARY"],
+  "executionTime": 32
+}
+```
+
+**优势：**
+- 无需手写 INSERT 语句
+- 自动处理字符串转义
+- 绑定变量防止 SQL 注入
+- 自动事务提交
+
+---
+
 ### 安全配置
 
 #### oracle_security_config
@@ -668,6 +725,29 @@ CREATE TABLE "SCOTT"."EMPLOYEES" (
 **注意事项**
 - 依赖 Oracle UNDO 表空间，历史数据保留时间取决于 `UNDO_RETENTION` 参数
 - 如果提示 `ORA-01555`，说明历史数据已过期，尝试更近的时间点
+
+---
+
+### 数据写入 (oracle_execute_dml / oracle_insert_record)
+
+执行数据插入和更新操作：
+
+**使用 SQL 语句**
+```
+插入一条员工记录: INSERT INTO EMPLOYEES (EMPLOYEE_ID, FIRST_NAME, SALARY) VALUES (999, 'Test', 5000)
+更新员工薪资: UPDATE EMPLOYEES SET SALARY = 25000 WHERE EMPLOYEE_ID = 100
+```
+
+**使用 JSON 对象插入**
+```
+往 EMPLOYEES 表插入数据: {"EMPLOYEE_ID": 999, "FIRST_NAME": "张三", "SALARY": 8000}
+帮我插入一条订单记录到 T_ORDER 表: {"ORDER_NO": "ORD001", "CUSTOMER_ID": 123, "AMOUNT": 999.99}
+```
+
+**安全限制**
+- 只允许 INSERT 和 UPDATE
+- 禁止 DELETE、TRUNCATE、DROP
+- UPDATE 必须带 WHERE 子句
 
 ---
 

@@ -1,10 +1,10 @@
 {
-  "name": "oracle-mcp-server",
+  "name": "oracle-mcp-tool",
   "version": "1.0.0",
   "description": "Oracle 数据库 MCP Server - 为 AI 助手提供 Oracle 数据库访问能力",
   "type": "module",
   "bin": {
-    "oracle-mcp-server": "./bin/oracle-mcp-server.js"
+    "oracle-mcp-tool": "./bin/oracle-mcp-server.js"
   },
   "main": "./src/index.js",
   "exports": {
@@ -34,5 +34,19 @@
     "model-context-protocol",
     "ai-assistant"
   ],
-  "license": "MIT"
+  "author": "liuyifan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3202336152/OracleMCP.git"
+  },
+  "homepage": "https://github.com/3202336152/OracleMCP#readme",
+  "bugs": {
+    "url": "https://github.com/3202336152/OracleMCP/issues"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md"
+  ]
 }
